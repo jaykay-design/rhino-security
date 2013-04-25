@@ -7,6 +7,7 @@ using Rhino.Security.Impl.Util;
 using Rhino.Security.Interfaces;
 using Rhino.Security.Model;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Rhino.Security.Services
 {
@@ -93,7 +94,7 @@ namespace Rhino.Security.Services
 
 			Guard.Against(group.DirectChildren.Count != 0, "Cannot remove users group '"+usersGroupName+"' because is has child groups. Remove those groups and try again.");
 
-		    session.CreateQuery("delete Permission p where p.UsersGroup = :group")
+		    session.CreateQuery("DELETE Permission p WHERE p.UsersGroup = :group")
 		        .SetEntity("group", group)
 		        .ExecuteUpdate();
 
@@ -328,17 +329,38 @@ namespace Rhino.Security.Services
 		/// <param name="user">The user.</param>
 		public virtual UsersGroup[] GetAssociatedUsersGroupFor(IUser user)
 		{
-		    ICollection<UsersGroup> usersGroups =
-		        SecurityCriterions.AllGroups(user)
-		            .GetExecutableCriteria(session)
-		            .AddOrder(Order.Asc("Name"))
-                    .SetCacheable(true)
-                    .List<UsersGroup>();
-		    return usersGroups.ToArray();
+            return session
+                .CreateQuery(@"
+                    SELECT ug
+                    FROM 
+                        UsersGroup ug JOIN ug.Users u WITH u.id = :user
+                    ORDER BY ug.Name
+                ")
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .List<UsersGroup>()
+                .ToArray();
 		}
 
-
-		/// <summary>
+        /// <summary>
+        /// Gets the associated users group for the specified user including inherited ones.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        public virtual UsersGroup[] GetAssociatedUsersGroupIncludingInheritedFor(IUser user)
+        {
+            return session
+                .CreateQuery(@"
+                    SELECT ug
+                    FROM 
+                        UsersGroup ug JOIN ug.UsersIncludingInherited u WITH u.id = :user
+                    ORDER BY ug.Name
+                ")
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .SetCacheable(true)
+                .List<UsersGroup>()
+                .ToArray();
+        }
+        
+        /// <summary>
 		/// Gets the users group by its name
 		/// </summary>
 		/// <param name="groupName">Name of the group.</param>
@@ -430,7 +452,31 @@ namespace Rhino.Security.Services
 		/// <param name="group">The group.</param>
 		public void AssociateUserWith(IUser user, UsersGroup group)
 		{
-			group.Users.Add(user);
+            UsersGroup[] existingUsersGroups = this.GetAssociatedUsersGroupFor(user);
+
+            if (!existingUsersGroups.Contains(group))
+            {
+                session
+                    .CreateSQLQuery("INSERT INTO {{UsersToUsersGroups}} (UserId, GroupId) VALUES(:user, :group)".PrefixTableName())
+                    .SetParameter("user", user.SecurityInfo.Identifier)
+                    .SetParameter("group", group.Id)
+                    .ExecuteUpdate();
+            }
+
+            var newGroups = group.AllChildren.ToList();
+            newGroups.Add(group);
+            newGroups = newGroups.Except(this.GetAssociatedUsersGroupIncludingInheritedFor(user)).ToList();
+
+            foreach (var ug in newGroups)
+            {
+                session
+                    .CreateSQLQuery("INSERT INTO {{UsersToUsersGroupsInherited}} (UserId, GroupId) VALUES(:user, :group)".PrefixTableName())
+                    .SetParameter("user", user.SecurityInfo.Identifier)
+                    .SetParameter("group", ug.Id)
+                    .ExecuteUpdate();
+            }
+
+            ClearCollectionsSecondLevelCache();
 		}
 
 		/// <summary>
@@ -483,8 +529,23 @@ namespace Rhino.Security.Services
 			UsersGroup group = GetUsersGroupByName(usersGroupName);
 			Guard.Against(group == null, "There is no users group named: " + usersGroupName);
 
-			group.Users.Remove(user);
-		}
+            session
+                .CreateSQLQuery("DELETE {{UsersToUsersGroups}} WHERE UserId=:user AND GroupId = :group".PrefixTableName())
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .SetParameter("group", group)
+                .ExecuteUpdate();
+
+            var allGroups = group.AllChildren.ToList();
+            allGroups.Add(group);
+
+            session
+                .CreateSQLQuery("DELETE {{UsersToUsersGroupsInherited}} WHERE UserId=:user AND GroupId IN(:groups)".PrefixTableName())
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .SetParameterList("groups", allGroups)
+                .ExecuteUpdate();
+
+            ClearCollectionsSecondLevelCache();
+        }
 
 		/// <summary>
 		/// Removes the entities from the specified group
@@ -514,21 +575,18 @@ namespace Rhino.Security.Services
 		/// <param name="user">The user.</param>
 		public void RemoveUser(IUser user)
 		{
-		    ICollection<UsersGroup> groups =
-		        SecurityCriterions.DirectUsersGroups((user))
-		            .GetExecutableCriteria(session)
-                    .SetCacheable(true)
-                    .List<UsersGroup>();
-			foreach (UsersGroup group in groups)
-			{
-				group.Users.Remove(user);
-			}
-
-		    session.CreateQuery("delete Permission p where p.User = :user")
+		    session.CreateQuery("DELETE Permission p WHERE p.User = :user")
 		        .SetEntity("user", user)
 		        .ExecuteUpdate();
-		}
+            session.CreateSQLQuery("DELETE {{UsersToUsersGroups}} WHERE UserId = :user".PrefixTableName())
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .ExecuteUpdate();
+            session.CreateSQLQuery("DELETE {{UsersToUsersGroupsInherited}} WHERE UserId = :user".PrefixTableName())
+                .SetParameter("user", user.SecurityInfo.Identifier)
+                .ExecuteUpdate();
 
+            ClearCollectionsSecondLevelCache();
+        }
 
 		/// <summary>
 		/// Removes the specified permission.
@@ -539,7 +597,26 @@ namespace Rhino.Security.Services
 			session.Delete(permission);
 		}
 
-		#endregion
+        /// <summary>
+        /// Gets the entity type from a security key
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns>null if not found</returns>
+        public Type GetEntityTypeFromSecurityKey(Guid key)
+        {
+            EntityReference reference = session.CreateCriteria<EntityReference>()
+                .Add(Restrictions.Eq("EntitySecurityKey", key))
+                .SetCacheable(true)
+                .UniqueResult<EntityReference>();
+            if (reference == null)
+            {
+                return null;
+            }
+
+            return Type.GetType(reference.Type.Name);
+        }
+        
+        #endregion
 
 		private static List<UsersGroup> Min(List<UsersGroup> first, List<UsersGroup> second)
 		{
@@ -588,5 +665,24 @@ namespace Rhino.Security.Services
 			}
 			return entityType;
 		}
-	}
+
+        private void ClearCollectionsSecondLevelCache()
+        {
+            var sessionFactory = session.SessionFactory;
+            string regionName = "rhino-security-usersgroupscollections";
+            sessionFactory.EvictQueries(regionName);
+
+            foreach (var collectionMetaData in sessionFactory.GetAllCollectionMetadata().Values)
+            {
+                var collectionPersister = collectionMetaData as NHibernate.Persister.Collection.ICollectionPersister;
+                if (collectionPersister != null)
+                {
+                    if ((collectionPersister.Cache != null) && (collectionPersister.Cache.RegionName == regionName))
+                    {
+                        sessionFactory.EvictCollection(collectionPersister.Role);
+                    }
+                }
+            }
+        }
+    }
 }

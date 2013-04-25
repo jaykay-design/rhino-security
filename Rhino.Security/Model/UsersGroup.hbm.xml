@@ -40,17 +40,30 @@
 			<key column="Parent" />
 			<one-to-many class="UsersGroup" />
 		</set>
-		<set name="Users"
+    
+		<set name="UsersIncludingInherited"
+				 access="property"
+				 table="UsersToUsersGroupsInherited"
+				 lazy="true" fetch="select" inverse="true">
+			<cache usage="read-write"
+						 region="rhino-security-usersgroupscollections"/>
+			<key column="GroupId" />
+			<many-to-many class="Rhino.Security.IUser" 
+										column="UserId" />
+		</set>
+
+    <set name="Users"
 				 access="property"
 				 table="UsersToUsersGroups"
-				 lazy="true">
-			<cache usage="read-write"
-						 region="rhino-security"/>
-			<key column="GroupId" />
-			<many-to-many class="Rhino.Security.IUser"
-										column="UserId"/>
-		</set>
-		<set name="AllChildren"
+				 lazy="true" fetch="select">
+      <cache usage="read-write"
+						 region="rhino-security-usersgroupscollections"/>
+      <key column="GroupId" />
+      <many-to-many class="Rhino.Security.IUser"
+										column="UserId" />
+    </set>
+
+    <set name="AllChildren"
 				 access="property"
 				 table="UsersGroupsHierarchy"
 				 lazy="true"
@@ -71,5 +84,20 @@
 			<many-to-many class="UsersGroup"
 										column="ParentGroup"/>
 		</set>
-	</class>
+	
+  </class>
+
+  <database-object>
+    <create>
+      <![CDATA[      
+CREATE NONCLUSTERED INDEX [IDX_UsersToUsersGroupsUserID]
+ON [dbo].[security_UsersToUsersGroups] ([UserId])
+
+CREATE NONCLUSTERED INDEX [IDX_UsersToUsersGroupsInheritedUserID]
+ON [dbo].[security_UsersToUsersGroupsInherited] ([UserId])
+]]>
+    </create>
+    <drop></drop>
+  </database-object>
+
 </hibernate-mapping>

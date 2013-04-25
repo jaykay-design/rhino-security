@@ -28,19 +28,11 @@ namespace Rhino.Security.Services
 
 		public static DetachedCriteria AllGroups(IUser user)
 		{
-			DetachedCriteria directGroupsCriteria = DirectUsersGroups(user)
-				.SetProjection(Projections.Id());
-
-            DetachedCriteria criteria = DetachedCriteria.For<UsersGroup>()
-                                                        .CreateAlias("Users", "user", JoinType.LeftOuterJoin)
-                                                        .CreateAlias("AllChildren", "child", JoinType.LeftOuterJoin)
-                                                        .Add(
-                                                             Subqueries.PropertyIn("child.id", directGroupsCriteria) ||
-                                                             Expression.Eq("user.id", user.SecurityInfo.Identifier))
-                                        .SetProjection(Projections.Id());
-
             return DetachedCriteria.For<UsersGroup>()
-                                    .Add(Subqueries.PropertyIn("Id", criteria));
+                .Add(Expression.Sql(
+                "{alias}.Id IN (SELECT GroupId FROM {{UsersToUsersGroupsInherited}} WHERE UserId = ?)".PrefixTableName(),
+                new object[] { user.SecurityInfo.Identifier },
+                new NHibernate.Type.IType[] { NHibernate.NHibernateUtil.Guid }));
 		}
         
         public static DetachedCriteria AllGroups<TEntity>(TEntity entity)where TEntity:class

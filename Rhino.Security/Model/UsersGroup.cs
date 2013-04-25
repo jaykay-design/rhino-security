@@ -25,7 +25,13 @@ namespace Rhino.Security.Model
 	    /// <value>The users.</value>
 	    public virtual ICollection<IUser> Users { get; set; }
 
-	    /// <summary>
+        /// <summary>
+        /// Gets the users which also includes the ones from parent users groups.
+        /// </summary>
+        /// <value>The users.</value>
+        public virtual ICollection<IUser> UsersIncludingInherited { get; set; }
+        
+        /// <summary>
 	    /// Gets or sets the parent of this group
 	    /// </summary>
 	    /// <value>The parent.</value>
@@ -50,5 +56,23 @@ namespace Rhino.Security.Model
 	    /// </summary>
 	    /// <value>All children.</value>
 	    public virtual ICollection<UsersGroup> AllParents { get; set; }
+
+        /// <summary>
+        /// The path of this usersGroup to the top parent
+        /// </summary>
+        public virtual string Path
+        {
+            get
+            {
+                if (this.Parent == null)
+                {
+                    return this.Name;
+                }
+                else
+                {
+                    return string.Format("{0}/{1}", this.Parent.Path, this.Name);
+                }
+            }
+        }
 	}
 }

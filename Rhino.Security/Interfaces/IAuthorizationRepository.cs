@@ -1,4 +1,5 @@
 using Rhino.Security.Model;
+using System;
 
 namespace Rhino.Security.Interfaces
 {
@@ -26,7 +27,13 @@ namespace Rhino.Security.Interfaces
 		/// <param name="user">The user.</param>
 		UsersGroup[] GetAssociatedUsersGroupFor(IUser user);
 
-		/// <summary>
+        /// <summary>
+        /// Gets the associated users group for the specified user including inherited ones.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        UsersGroup[] GetAssociatedUsersGroupIncludingInheritedFor(IUser user);
+        
+        /// <summary>
 		/// Gets the users group by its name
 		/// </summary>
 		/// <param name="groupName">Name of the group.</param>
@@ -46,6 +53,12 @@ namespace Rhino.Security.Interfaces
 		/// <returns></returns>
 		EntitiesGroup[] GetAssociatedEntitiesGroupsFor<TEntity>(TEntity entity) where TEntity : class;
 
+        /// <summary>
+        /// Gets the type for a security key
+        /// </summary>
+        /// <param name="securityKey">the entity's security key</param>
+        /// <returns>null if not found</returns>
+        Type GetEntityTypeFromSecurityKey(Guid securityKey);
 
 		/// <summary>
 		/// Associates the entity with a group with the specified name
