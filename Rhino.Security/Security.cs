@@ -24,6 +24,8 @@ namespace Rhino.Security
 
 	    private ILog logger = LogManager.GetLogger(typeof (Security));
 
+        internal static SecurityTableStructure TableStructure { get; set; }
+
 		/// <summary>
 		/// Extracts the key from the specified entity.
 		/// </summary>
@@ -80,6 +82,8 @@ namespace Rhino.Security
         public static void Configure<TUserType>(Configuration cfg, SecurityTableStructure securityTableStructure)
              where TUserType : IUser
         {
+            Security.TableStructure = securityTableStructure;
+
             cfg.AddAssembly(typeof (IUser).Assembly);
             new SchemaChanger(cfg, securityTableStructure).Change();
             new UserMapper(cfg, typeof(TUserType)).Map();
