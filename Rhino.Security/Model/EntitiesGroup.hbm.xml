@@ -36,7 +36,7 @@
          lazy="true"
          inverse="true">
       <cache usage="read-write"
-             region="rhino-security"/>
+             region="rhino-security-entitiesgroupscollections"/>
       <key column="Parent" />
       <one-to-many class="EntitiesGroup"/>
     </set>
@@ -45,7 +45,7 @@
 				 table="EntityReferencesToEntitiesGroups"
 				 lazy="true">
 			<cache usage="read-write"
-						 region="rhino-security"/>
+						 region="rhino-security-entitiesgroupscollections"/>
 			<key column="GroupId" />
 			<many-to-many class="EntityReference"
 										column="EntityReferenceId"/>
@@ -56,7 +56,7 @@
          lazy="true"
          inverse="true">
       <cache usage="read-write"
-             region="rhino-security"/>
+             region="rhino-security-entitiesgroupscollections"/>
       <key column="ParentGroup" />
       <many-to-many class="EntitiesGroup"
                     column="ChildGroup"/>
@@ -66,7 +66,7 @@
          table="EntityGroupsHierarchy"
          lazy="true">
       <cache usage="read-write"
-             region="rhino-security"/>
+             region="rhino-security-entitiesgroupscollections"/>
       <key column="ChildGroup"/>
       <many-to-many class="EntitiesGroup"
                     column="ParentGroup"/>

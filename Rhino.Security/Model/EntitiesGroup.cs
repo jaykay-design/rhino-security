@@ -40,14 +40,14 @@ namespace Rhino.Security.Model
 
 
         /// <summary>
-        /// Gets or sets all children of this users group, at all nesting levels
+        /// Gets or sets all children of this entities group, at all nesting levels
         /// </summary>
         /// <value>All children.</value>
         public virtual ICollection<EntitiesGroup> AllChildren { get; set; }
         
         
         /// <summary>
-        /// Gets or sets all parent of this users group, at all nesting levels
+        /// Gets or sets all parent of this entities group, at all nesting levels
         /// </summary>
         /// <value>All children.</value>
         public virtual ICollection<EntitiesGroup> AllParents { get; set; }

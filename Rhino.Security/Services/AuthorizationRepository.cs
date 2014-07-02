@@ -57,7 +57,12 @@ namespace Rhino.Security.Services
 			group.AllParents.AddAll(parent.AllParents);
 			group.AllParents.Add(parent);
 			parent.DirectChildren.Add(group);
-			parent.AllChildren.Add(group);
+
+            foreach (var p in group.AllParents)
+            {
+                p.AllChildren.Add(group);
+            }
+
 			return group;
 		}
 
@@ -77,7 +82,11 @@ namespace Rhino.Security.Services
             group.AllParents.AddAll(parent.AllParents);
             group.AllParents.Add(parent);
             parent.DirectChildren.Add(group);
-            parent.AllChildren.Add(group);
+
+            foreach (var p in group.AllParents)
+            {
+                p.AllChildren.Add(group);
+            }
 
             return group;
         }
@@ -428,7 +437,21 @@ namespace Rhino.Security.Services
 			Guid key = Security.ExtractKey(entity);
 
 			EntityReference reference = GetOrCreateEntityReference<TEntity>(key);
-			entitiesGroup.Entities.Add(reference);
+
+            session.Flush();
+
+            session
+                .CreateSQLQuery("DELETE {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
+                .SetParameter("reference", reference.Id)
+                .SetParameter("group", entitiesGroup.Id)
+                .ExecuteUpdate();
+            session
+                .CreateSQLQuery("INSERT INTO {{EntityReferencesToEntitiesGroups}} (GroupId,EntityReferenceId) VALUES(:group,:entity)".PrefixTableName())
+                .SetParameter("entity", reference.Id)
+                .SetParameter("group", entitiesGroup.Id)
+                .ExecuteUpdate();
+
+            ClearEntitiesGroupsCache();
 		}
 
 
@@ -476,7 +499,7 @@ namespace Rhino.Security.Services
                     .ExecuteUpdate();
             }
 
-            ClearCollectionsSecondLevelCache();
+            ClearUsersGroupsCache();
 		}
 
 		/// <summary>
@@ -544,7 +567,7 @@ namespace Rhino.Security.Services
                 .SetParameterList("groups", allGroups)
                 .ExecuteUpdate();
 
-            ClearCollectionsSecondLevelCache();
+            ClearUsersGroupsCache();
         }
 
 		/// <summary>
@@ -561,9 +584,15 @@ namespace Rhino.Security.Services
 			Guid key = Security.ExtractKey(entity);
 
 			EntityReference reference = GetOrCreateEntityReference<TEntity>(key);
-			entitiesGroup.Entities.Remove(reference);
-		}
 
+            session
+                .CreateSQLQuery("DELETE {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
+                .SetParameter("reference", reference.Id)
+                .SetParameter("group", entitiesGroup.Id)
+                .ExecuteUpdate();
+
+            ClearEntitiesGroupsCache();
+		}
 
 		/// <summary>
 		/// Removes the user from rhino security.
@@ -585,7 +614,7 @@ namespace Rhino.Security.Services
                 .SetParameter("user", user.SecurityInfo.Identifier)
                 .ExecuteUpdate();
 
-            ClearCollectionsSecondLevelCache();
+            ClearUsersGroupsCache();
         }
 
 		/// <summary>
@@ -666,23 +695,38 @@ namespace Rhino.Security.Services
 			return entityType;
 		}
 
-        private void ClearCollectionsSecondLevelCache()
+        private void ClearUsersGroupsCache()
         {
             var sessionFactory = session.SessionFactory;
-            string regionName = "rhino-security-usersgroupscollections";
-            sessionFactory.EvictQueries(regionName);
+            sessionFactory.EvictQueries("rhino-security-usersgroupscollections");
 
-            foreach (var collectionMetaData in sessionFactory.GetAllCollectionMetadata().Values)
-            {
-                var collectionPersister = collectionMetaData as NHibernate.Persister.Collection.ICollectionPersister;
-                if (collectionPersister != null)
-                {
-                    if ((collectionPersister.Cache != null) && (collectionPersister.Cache.RegionName == regionName))
-                    {
-                        sessionFactory.EvictCollection(collectionPersister.Role);
-                    }
-                }
-            }
+            sessionFactory.EvictCollection("Rhino.Security.Model.UsersGroup.Users");
+            sessionFactory.EvictCollection("Rhino.Security.Model.UsersGroup.UsersIncludingInherited");
+            sessionFactory.EvictCollection("Rhino.Security.Model.UsersGroup.DirectChildren");
+            sessionFactory.EvictCollection("Rhino.Security.Model.UsersGroup.AllChildren");
+            sessionFactory.EvictCollection("Rhino.Security.Model.UsersGroup.AllParents");
+
+            //foreach (var collectionMetaData in sessionFactory.GetAllCollectionMetadata().Values)
+            //{
+            //    var collectionPersister = collectionMetaData as NHibernate.Persister.Collection.ICollectionPersister;
+            //    if (collectionPersister != null)
+            //    {
+            //        if ((collectionPersister.Cache != null) && (collectionPersister.Cache.RegionName == regionName))
+            //        {
+            //            sessionFactory.EvictCollection(collectionPersister.Role);
+            //        }
+            //    }
+            //}
+        }
+        private void ClearEntitiesGroupsCache()
+        {
+            var sessionFactory = session.SessionFactory;
+            sessionFactory.EvictQueries("rhino-security-entitiesgroupscollections");
+
+            sessionFactory.EvictCollection("Rhino.Security.Model.EntitiesGroup.Entities");
+            sessionFactory.EvictCollection("Rhino.Security.Model.EntitiesGroup.DirectChildren");
+            sessionFactory.EvictCollection("Rhino.Security.Model.EntitiesGroup.AllChildren");
+            sessionFactory.EvictCollection("Rhino.Security.Model.EntitiesGroup.AllParents");
         }
     }
 }

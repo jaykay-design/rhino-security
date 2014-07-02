@@ -38,19 +38,34 @@ namespace Rhino.Security.Services
         public static DetachedCriteria AllGroups<TEntity>(TEntity entity)where TEntity:class
         {
             Guid key = Security.ExtractKey(entity);
-            DetachedCriteria directGroupsCriteria = DirectEntitiesGroups(entity)
-                .SetProjection(Projections.Id());
 
-            DetachedCriteria criteria = DetachedCriteria.For<EntitiesGroup>()
-                                                        .CreateAlias("Entities", "entity", JoinType.LeftOuterJoin)
-                                                        .CreateAlias("AllChildren", "child", JoinType.LeftOuterJoin)
-                                                        .Add(
-                                                            Subqueries.PropertyIn("child.id", directGroupsCriteria) ||
-                                                            Expression.Eq("entity.EntitySecurityKey", key))
-                                        .SetProjection(Projections.Id());
-            
             return DetachedCriteria.For<EntitiesGroup>()
-                                    .Add(Subqueries.PropertyIn("Id", criteria));
+                .Add(Expression.Sql(
+@"{alias}.Id IN (
+SELECT ParentGroup FROM {{EntityGroupsHierarchy}} WHERE ChildGroup IN
+    (
+        SELECT 
+            e2eg.GroupId 
+        FROM 
+            {{EntityReferences}} er JOIN
+            {{EntityReferencesToEntitiesGroups}} e2eg ON er.Id = e2eg.EntityReferenceId
+        WHERE 
+            er.EntitySecurityKey = ?
+    )
+
+UNION 
+        SELECT 
+            e2eg.GroupId 
+        FROM 
+            {{EntityReferences}} er JOIN
+            {{EntityReferencesToEntitiesGroups}} e2eg ON er.Id = e2eg.EntityReferenceId
+        WHERE 
+            er.EntitySecurityKey = ?
+    )
+".PrefixTableName(),
+                new object[] { key, key },
+                new NHibernate.Type.IType[] { NHibernate.NHibernateUtil.Guid, NHibernate.NHibernateUtil.Guid }));
+            
         }
 		
 	}

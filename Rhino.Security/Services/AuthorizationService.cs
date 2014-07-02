@@ -39,9 +39,9 @@ namespace Rhino.Security.Services
 		/// <param name="user">The user.</param>
 		/// <param name="criteria">The criteria.</param>
 		/// <param name="operation">The operation.</param>
-		public void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria)
-		{			
-            ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria));
+        public void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria, bool ignoreEntityGroups)
+		{
+            ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
 			criteria.Add(allowed);
 		}
 
@@ -52,9 +52,9 @@ namespace Rhino.Security.Services
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>
-        public void AddPermissionsToQuery(UsersGroup usersgroup,string operation, ICriteria criteria)
-        {            
-            ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria));
+        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, ICriteria criteria, bool ignoreEntityGroups)
+        {
+            ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
             criteria.Add(allowed);
         }
 
@@ -64,9 +64,9 @@ namespace Rhino.Security.Services
 		/// <param name="user">The user.</param>
 		/// <param name="criteria">The criteria.</param>
 		/// <param name="operation">The operation.</param>
-		public void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria)
-		{			
-            ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria));
+        public void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria, bool ignoreEntityGroups)
+		{
+            ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
 			criteria.Add(allowed);
 		}
 
@@ -76,9 +76,9 @@ namespace Rhino.Security.Services
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>
-        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria)
-        {            
-            ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria));
+        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria, bool ignoreEntityGroups)
+        {
+            ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
             criteria.Add(allowed);
         }	    
 
@@ -157,38 +157,68 @@ namespace Rhino.Security.Services
 
 		#endregion
 
-		private static ICriterion GetPermissionQueryInternal(IUser user, string operation, string securityKeyProperty)
-		{
-			string[] operationNames = Strings.GetHierarchicalOperationNames(operation);
-			DetachedCriteria criteria = DetachedCriteria.For<Permission>("permission")
-				.CreateAlias("Operation", "op")
-				.CreateAlias("EntitiesGroup", "entityGroup", JoinType.LeftOuterJoin)
-				.CreateAlias("entityGroup.Entities", "entityKey", JoinType.LeftOuterJoin)
-				.SetProjection(Projections.Property("Allow"))
-				.Add(Restrictions.In("op.Name", operationNames))
-				.Add(Restrictions.Eq("User", user) 
-				|| Subqueries.PropertyIn("UsersGroup.Id", 
-										 SecurityCriterions.AllGroups(user).SetProjection(Projections.Id())))
-				.Add(
-				Property.ForName(securityKeyProperty).EqProperty("permission.EntitySecurityKey") ||
-				Property.ForName(securityKeyProperty).EqProperty("entityKey.EntitySecurityKey") ||
-				(
-					Restrictions.IsNull("permission.EntitySecurityKey") &&
-					Restrictions.IsNull("permission.EntitiesGroup")
-				)
-				)
-				.SetMaxResults(1)
-				.AddOrder(Order.Desc("Level"))
-				.AddOrder(Order.Asc("Allow"));
-			return Subqueries.Eq(true, criteria);
-		}
+        private static ICriterion GetPermissionQueryInternal(IUser user, string operation, string securityKeyProperty, bool ignoreEntityGroups)
+        {
+            string[] operationNames = Strings.GetHierarchicalOperationNames(operation);
 
-        private ICriterion GetPermissionQueryInternal(UsersGroup usersgroup, string operation, string securityKeyProperty)
+            DetachedCriteria criteria = DetachedCriteria.For<Permission>("permission")
+                .CreateAlias("Operation", "op")
+                .SetProjection(Projections.Property("Allow"))
+                .Add(Restrictions.In("op.Name", operationNames));
+
+            if (ignoreEntityGroups)
+            {
+                criteria.Add(Restrictions.Eq("User", user)
+                    || Subqueries.PropertyIn("UsersGroup.Id", SecurityCriterions.AllGroups(user).SetProjection(Projections.Id())))
+                .Add(
+                    Property.ForName(securityKeyProperty).EqProperty("permission.EntitySecurityKey") ||
+                    Restrictions.IsNull("permission.EntitySecurityKey"));
+
+            }
+            else
+            {
+                criteria
+                .CreateAlias("EntitiesGroup", "entityGroup", JoinType.LeftOuterJoin)
+                .CreateAlias("entityGroup.Entities", "entityKey", JoinType.LeftOuterJoin)
+                    .Add(Restrictions.Eq("User", user)
+                    || Subqueries.PropertyIn("UsersGroup.Id", SecurityCriterions.AllGroups(user).SetProjection(Projections.Id())))
+                .Add(
+                    Property.ForName(securityKeyProperty).EqProperty("permission.EntitySecurityKey") ||
+                    Property.ForName(securityKeyProperty).EqProperty("entityKey.EntitySecurityKey") ||
+                    (
+                        Restrictions.IsNull("permission.EntitySecurityKey") &&
+                        Restrictions.IsNull("permission.EntitiesGroup")
+                    )
+                );
+            }
+
+            criteria.SetMaxResults(1)
+            .AddOrder(Order.Desc("Level"))
+            .AddOrder(Order.Asc("Allow"));
+
+            return Subqueries.Eq(true, criteria);
+        }
+
+        private ICriterion GetPermissionQueryInternal(UsersGroup usersgroup, string operation, string securityKeyProperty, bool ignoreEntityGroups)
         {
             string[] operationNames = Strings.GetHierarchicalOperationNames(operation);
             DetachedCriteria criteria = DetachedCriteria.For<Permission>("permission")
-                .CreateAlias("Operation", "op")
-                .CreateAlias("EntitiesGroup", "entityGroup", JoinType.LeftOuterJoin)
+                .CreateAlias("Operation", "op");
+
+            if (ignoreEntityGroups)
+            {
+                criteria
+                    .SetProjection(Projections.Property("Allow"))
+                    .Add(Expression.In("op.Name", operationNames))
+                    .Add(Expression.Eq("UsersGroup", usersgroup))
+                    .Add(
+                    Property.ForName(securityKeyProperty).EqProperty("permission.EntitySecurityKey") ||
+                        Expression.IsNull("permission.EntitySecurityKey")
+                    );
+            }
+            else
+            {
+                criteria.CreateAlias("EntitiesGroup", "entityGroup", JoinType.LeftOuterJoin)
                 .CreateAlias("entityGroup.Entities", "entityKey", JoinType.LeftOuterJoin)
                 .SetProjection(Projections.Property("Allow"))
                 .Add(Expression.In("op.Name", operationNames))
@@ -200,10 +230,12 @@ namespace Rhino.Security.Services
                     Expression.IsNull("permission.EntitySecurityKey") &&
                     Expression.IsNull("permission.EntitiesGroup")
                 )
-                )
-                .SetMaxResults(1)
+                );
+            }
+            criteria.SetMaxResults(1)
                 .AddOrder(Order.Desc("Level"))
                 .AddOrder(Order.Asc("Allow"));
+
             return Subqueries.Eq(true, criteria);
         }
 
