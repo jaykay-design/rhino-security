@@ -4,24 +4,22 @@ using Castle.ActiveRecord.Framework;
 using Castle.ActiveRecord.Framework.Internal;
 using NHibernate;
 using NHibernate.Cfg;
-using Rhino.Commons;
-
 namespace Rhino.Security.ActiveRecord
 {
-	public class RegisterRhinoSecurityModels : INHibernateInitializationAware
+	public class RegisterRhinoSecurityModels
 	{
 		private readonly ActiveRecordModelBuilder modelBuilder = new ActiveRecordModelBuilder();
 
-		public void BeforeInitialization()
-		{
-			ActiveRecordStarter.ModelsValidated+=delegate
-			{
-				foreach (Type type in RhinoSecurity.Entities)
-				{
-					modelBuilder.CreateDummyModelFor(type);
-				}
-			};
-		}
+        public void BeforeInitialization()
+        {
+            ActiveRecordStarter.ModelsValidated += delegate
+            {
+                foreach (Type type in RhinoSecurity.Entities)
+                {
+                    modelBuilder.CreateDummyModelFor(type);
+                }
+            };
+        }
 
 		public void Configured(Configuration cfg)
 		{
