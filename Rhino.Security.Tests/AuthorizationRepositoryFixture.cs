@@ -75,7 +75,7 @@ namespace Rhino.Security.Tests
                                                                              authorizationRepository.CreateEntitiesGroup("Admininstrators");
                                                                              session.Flush();
                                                                          }).InnerException;
-            Assert.Contains("unique", exception.Message);
+            Assert.Contains("unique", exception.Message.ToLower());
         }
 
         [Fact]
@@ -90,7 +90,7 @@ namespace Rhino.Security.Tests
                                                                              session.Flush();
                                                                          }).InnerException;
 
-            Assert.Contains("unique", exception.Message);
+            Assert.Contains("unique", exception.Message.ToLower());
         }
 
         [Fact]
@@ -155,7 +155,7 @@ namespace Rhino.Security.Tests
                         authorizationRepository.RenameUsersGroup("Admininstrators", "ExistingGroup");
                         session.Flush();
                     }).InnerException;
-            Assert.Contains("unique", exception.Message);
+            Assert.Contains("unique", exception.Message.ToLower());
         }
 
         [Fact]
@@ -195,14 +195,13 @@ namespace Rhino.Security.Tests
                         session.Flush();
                     }).InnerException;
 
-            Assert.Contains("unique", exception.Message);
+            Assert.Contains("unique", exception.Message.ToLower());
         }
 
         [Fact]
         public void CannotRenameUsersGroupThatDoesNotExist()
         {
-            Assert.Throws<InvalidOperationException>("There is no users group named: NonExistingGroup",
-                                                     () =>
+            Assert.ThrowsAny<InvalidOperationException>(() =>
                                                      authorizationRepository.RenameUsersGroup("NonExistingGroup",
                                                                                               "Administrators"));
         }
@@ -210,8 +209,7 @@ namespace Rhino.Security.Tests
         [Fact]
         public void CannotRenameEntitiesGroupThatDoesNotExist()
         {
-            Assert.Throws<InvalidOperationException>( "There is no entities group named: NonExistingGroup",
-                                                     () =>
+            Assert.ThrowsAny<InvalidOperationException>(() =>
                                                      authorizationRepository.RenameEntitiesGroup("NonExistingGroup",
                                                                                                  "Accounts"));
         }
@@ -233,7 +231,7 @@ namespace Rhino.Security.Tests
             session.Evict(group);
 
             UsersGroup[] groups = authorizationRepository.GetAssociatedUsersGroupFor(ayende);
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Admins", groups[0].Name);
         }
 
@@ -367,7 +365,7 @@ namespace Rhino.Security.Tests
 
 
             UsersGroup[] groups = authorizationRepository.GetAncestryAssociation(ayende, "Admins");
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Admins", groups[0].Name);
         }
 
@@ -383,7 +381,7 @@ namespace Rhino.Security.Tests
             authorizationRepository.AssociateEntityWith(beto,"Executive Accounts");
 
             EntitiesGroup[] groups = authorizationRepository.GetAncestryAssociationOfEntity(beto, "Executive Accounts");
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Executive Accounts", groups[0].Name);
         }
 
@@ -399,7 +397,7 @@ namespace Rhino.Security.Tests
 
 
             UsersGroup[] groups = authorizationRepository.GetAncestryAssociation(ayende, "Admins");
-            Assert.Equal(0, groups.Length);
+            Assert.Empty(groups);
         }
         
         [Fact]
@@ -412,7 +410,7 @@ namespace Rhino.Security.Tests
             authorizationRepository.CreateEntitiesGroup("Executive Accounts");
 
             EntitiesGroup[] groups = authorizationRepository.GetAncestryAssociationOfEntity(beto, "Executive Accounts");
-            Assert.Equal(0,groups.Length);
+            Assert.Empty(groups);
         }
 
         [Fact]
@@ -432,7 +430,7 @@ namespace Rhino.Security.Tests
 
 
             UsersGroup[] groups = authorizationRepository.GetAncestryAssociation(ayende, "Admins");
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Admins", groups[0].Name);
         }
 
@@ -451,7 +449,7 @@ namespace Rhino.Security.Tests
             authorizationRepository.AssociateEntityWith(beto, "Manager Accounts");
 
             EntitiesGroup[] groups = authorizationRepository.GetAncestryAssociationOfEntity(beto, "Executive Accounts");
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Executive Accounts",groups[0].Name);
         }
 
@@ -518,6 +516,7 @@ namespace Rhino.Security.Tests
             authorizationRepository.AssociateUserWith(ayende, "DBA");
             authorizationRepository.AssociateUserWith(ayende, "SQLite DBA");
 
+            session.Flush();
 
             UsersGroup[] groups = authorizationRepository.GetAncestryAssociation(ayende, "Admins");
             Assert.Equal(2, groups.Length);
@@ -566,7 +565,7 @@ namespace Rhino.Security.Tests
             session.Evict(group);
 
             EntitiesGroup[] groups = authorizationRepository.GetAssociatedEntitiesGroupsFor(ayende);
-            Assert.Equal(1, groups.Length);
+            Assert.Single(groups);
             Assert.Equal("Accounts", groups[0].Name);
         }
 
@@ -613,8 +612,7 @@ namespace Rhino.Security.Tests
         {
             authorizationRepository.CreateChildUserGroupOf("Administrators", "DBA");
 
-            Assert.Throws<InvalidOperationException>(
-                 "Cannot remove users group 'Administrators' because is has child groups. Remove those groups and try again.",
+            Assert.ThrowsAny<InvalidOperationException>(
                  () => authorizationRepository.RemoveUsersGroup("Administrators"));
         }
 
@@ -623,8 +621,7 @@ namespace Rhino.Security.Tests
         {
             authorizationRepository.CreateChildEntityGroupOf("Important Accounts", "Regular Accounts");
 
-            Assert.Throws<InvalidOperationException>(
-                 "Cannot remove entity group 'Important Accounts' because is has child groups. Remove those groups and try again.",
+            Assert.ThrowsAny<InvalidOperationException>(
                  () => authorizationRepository.RemoveEntitiesGroup("Important Accounts"));
         }
 
@@ -707,7 +704,7 @@ namespace Rhino.Security.Tests
             session.Flush();
 
             associedGroups = authorizationRepository.GetAssociatedUsersGroupFor(user);
-            Assert.Equal(1, associedGroups.Length);
+            Assert.Single(associedGroups);
         }
 
         [Fact]
@@ -726,7 +723,7 @@ namespace Rhino.Security.Tests
             session.Flush();
 
             associatedGroups = authorizationRepository.GetAssociatedEntitiesGroupsFor(account);
-            Assert.Equal(1, associatedGroups.Length);
+            Assert.Single(associatedGroups);
         }
 
         [Fact]
@@ -770,8 +767,7 @@ namespace Rhino.Security.Tests
         [Fact]
         public void CannotRemoveParentOperatio()
         {
-            Assert.Throws<InvalidOperationException>("Cannot remove operation '/Account' because it has child operations. Remove those operations and try again.",
-                () => authorizationRepository.RemoveOperation("/Account"));
+            Assert.ThrowsAny<InvalidOperationException>(() => authorizationRepository.RemoveOperation("/Account"));
         }
 
         [Fact]

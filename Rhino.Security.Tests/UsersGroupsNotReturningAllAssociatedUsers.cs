@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Practices.ServiceLocation;
+using CommonServiceLocator;
 using NHibernate;
 using Rhino.Security.Interfaces;
 using Xunit;
@@ -60,12 +60,12 @@ namespace Rhino.Security.Tests
             
             User marcus = session.Get<User>(Convert.ToInt64(idMarcus));
             UsersGroup[] marcusGroups = authorizationRepository.GetAssociatedUsersGroupFor(marcus);
-            Assert.Equal(1, marcusGroups.Length);
+            Assert.Single(marcusGroups);
             Assert.Equal(2, marcusGroups[0].Users.Count);
 
             User ayende = session.Get<User>(Convert.ToInt64(idAyende));
             UsersGroup[] ayendeGroups = authorizationRepository.GetAssociatedUsersGroupFor(ayende);
-            Assert.Equal(1, ayendeGroups.Length);
+            Assert.Single(ayendeGroups);
             Assert.Equal(2, ayendeGroups[0].Users.Count);
         }
     }
