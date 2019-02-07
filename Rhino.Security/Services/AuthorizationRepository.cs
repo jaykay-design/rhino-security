@@ -438,10 +438,11 @@ namespace Rhino.Security.Services
 
 			EntityReference reference = GetOrCreateEntityReference<TEntity>(key);
 
+            // must flush here since the guid.comb ID is not auto flushed until the transaction completes and we need it in in SQL queries
             session.Flush();
 
             session
-                .CreateSQLQuery("DELETE {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
+                .CreateSQLQuery("DELETE FROM {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
                 .SetParameter("reference", reference.Id)
                 .SetParameter("group", entitiesGroup.Id)
                 .ExecuteUpdate();
@@ -553,7 +554,7 @@ namespace Rhino.Security.Services
 			Guard.Against(group == null, "There is no users group named: " + usersGroupName);
 
             session
-                .CreateSQLQuery("DELETE {{UsersToUsersGroups}} WHERE UserId=:user AND GroupId = :group".PrefixTableName())
+                .CreateSQLQuery("DELETE FROM {{UsersToUsersGroups}} WHERE UserId=:user AND GroupId = :group".PrefixTableName())
                 .SetParameter("user", user.SecurityInfo.Identifier)
                 .SetParameter("group", group)
                 .ExecuteUpdate();
@@ -562,7 +563,7 @@ namespace Rhino.Security.Services
             allGroups.Add(group);
 
             session
-                .CreateSQLQuery("DELETE {{UsersToUsersGroupsInherited}} WHERE UserId=:user AND GroupId IN(:groups)".PrefixTableName())
+                .CreateSQLQuery("DELETE FROM {{UsersToUsersGroupsInherited}} WHERE UserId=:user AND GroupId IN(:groups)".PrefixTableName())
                 .SetParameter("user", user.SecurityInfo.Identifier)
                 .SetParameterList("groups", allGroups)
                 .ExecuteUpdate();
@@ -586,7 +587,7 @@ namespace Rhino.Security.Services
 			EntityReference reference = GetOrCreateEntityReference<TEntity>(key);
 
             session
-                .CreateSQLQuery("DELETE {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
+                .CreateSQLQuery("DELETE FROM {{EntityReferencesToEntitiesGroups}} WHERE GroupId = :group AND EntityReferenceId = :reference".PrefixTableName())
                 .SetParameter("reference", reference.Id)
                 .SetParameter("group", entitiesGroup.Id)
                 .ExecuteUpdate();
@@ -607,10 +608,10 @@ namespace Rhino.Security.Services
 		    session.CreateQuery("DELETE Permission p WHERE p.User = :user")
 		        .SetEntity("user", user)
 		        .ExecuteUpdate();
-            session.CreateSQLQuery("DELETE {{UsersToUsersGroups}} WHERE UserId = :user".PrefixTableName())
+            session.CreateSQLQuery("DELETE FROM {{UsersToUsersGroups}} WHERE UserId = :user".PrefixTableName())
                 .SetParameter("user", user.SecurityInfo.Identifier)
                 .ExecuteUpdate();
-            session.CreateSQLQuery("DELETE {{UsersToUsersGroupsInherited}} WHERE UserId = :user".PrefixTableName())
+            session.CreateSQLQuery("DELETE FROM {{UsersToUsersGroupsInherited}} WHERE UserId = :user".PrefixTableName())
                 .SetParameter("user", user.SecurityInfo.Identifier)
                 .ExecuteUpdate();
 
@@ -669,8 +670,8 @@ namespace Rhino.Security.Services
 		{
 			EntityReference reference = session.CreateCriteria<EntityReference>()
                 .Add(Restrictions.Eq("EntitySecurityKey", key))
-                .SetCacheable(true)
                 .UniqueResult<EntityReference>();
+
 			if (reference == null)
 			{
 				reference = new EntityReference();
