@@ -31,15 +31,16 @@ namespace Rhino.Security.Services
 			this.authorizationRepository = authorizationRepository;
 		}
 
-		#region IAuthorizationService Members
+        #region IAuthorizationService Members
 
-		/// <summary>
-		/// Adds the permissions to the criteria query.
-		/// </summary>
-		/// <param name="user">The user.</param>
-		/// <param name="criteria">The criteria.</param>
-		/// <param name="operation">The operation.</param>
-        public void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria, bool ignoreEntityGroups)
+        /// <summary>
+        /// Adds the permissions to the criteria query.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="criteria">The criteria.</param>
+        /// <param name="operation">The operation.</param>
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        public void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria, bool ignoreEntityGroups = false)
 		{
             ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
 			criteria.Add(allowed);
@@ -52,19 +53,21 @@ namespace Rhino.Security.Services
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>
-        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, ICriteria criteria, bool ignoreEntityGroups)
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, ICriteria criteria, bool ignoreEntityGroups = false)
         {
             ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
             criteria.Add(allowed);
         }
 
-		/// <summary>
-		/// Adds the permissions to query.
-		/// </summary>
-		/// <param name="user">The user.</param>
-		/// <param name="criteria">The criteria.</param>
-		/// <param name="operation">The operation.</param>
-        public void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria, bool ignoreEntityGroups)
+        /// <summary>
+        /// Adds the permissions to query.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="criteria">The criteria.</param>
+        /// <param name="operation">The operation.</param>
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        public void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria, bool ignoreEntityGroups = false)
 		{
             ICriterion allowed = GetPermissionQueryInternal(user, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
 			criteria.Add(allowed);
@@ -76,7 +79,8 @@ namespace Rhino.Security.Services
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>
-        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria, bool ignoreEntityGroups)
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        public void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria, bool ignoreEntityGroups = false)
         {
             ICriterion allowed = GetPermissionQueryInternal(usersgroup, operation, GetSecurityKeyProperty(criteria), ignoreEntityGroups);
             criteria.Add(allowed);

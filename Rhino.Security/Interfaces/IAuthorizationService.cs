@@ -11,13 +11,14 @@ namespace Rhino.Security.Interfaces
 	///</summary>
 	public interface IAuthorizationService
 	{
-		/// <summary>
-		/// Adds the permissions to the criteria query.
-		/// </summary>
-		/// <param name="user">The user.</param>
-		/// <param name="criteria">The criteria.</param>
-		/// <param name="operation">The operation.</param>
-        void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria, bool ignoreEntityGroups);
+        /// <summary>
+        /// Adds the permissions to the criteria query.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="criteria">The criteria.</param>
+        /// <param name="operation">The operation.</param>
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        void AddPermissionsToQuery(IUser user, string operation, ICriteria criteria, bool ignoreEntityGroups = false);
 
 
         ///<summary>
@@ -27,15 +28,17 @@ namespace Rhino.Security.Interfaces
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>
-        void AddPermissionsToQuery(UsersGroup usersgroup, string operation, ICriteria criteria, bool ignoreEntityGroups);
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        void AddPermissionsToQuery(UsersGroup usersgroup, string operation, ICriteria criteria, bool ignoreEntityGroups = false);
 
-		/// <summary>
-		/// Adds the permissions to the criteria query.
-		/// </summary>
-		/// <param name="user">The user.</param>
-		/// <param name="criteria">The criteria.</param>
-		/// <param name="operation">The operation.</param>
-		void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria, bool ignoreEntityGroups);
+        /// <summary>
+        /// Adds the permissions to the criteria query.
+        /// </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="criteria">The criteria.</param>
+        /// <param name="operation">The operation.</param>
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        void AddPermissionsToQuery(IUser user, string operation, DetachedCriteria criteria, bool ignoreEntityGroups = false);
 
         ///<summary>Adds the permissions to the criteria query for the given usersgroup
         ///</summary>
@@ -43,7 +46,8 @@ namespace Rhino.Security.Interfaces
         /// are taken into account</param>
         ///<param name="operation">The operation</param>
         ///<param name="criteria">The criteria</param>        
-        void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria, bool ignoreEntityGroups);
+        /// <param name="ignoreEntityGroups">Ignore Entitygroups checking for performance.</param>
+        void AddPermissionsToQuery(UsersGroup usersgroup, string operation, DetachedCriteria criteria, bool ignoreEntityGroups = false);
 
 		/// <summary>
 		/// Determines whether the specified user is allowed to perform the specified 
